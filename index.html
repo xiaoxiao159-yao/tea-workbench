@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>茶歇工作台 · Tea Time Studio</title>
+<meta name="description" content="奶茶色系个人工作台：文献、番茄钟、每日支出与复盘，都在一杯茶的时间里。">
+<meta name="theme-color" content="#f3eae0">
+<link rel="stylesheet" href="styles.css">
+<link rel="stylesheet" href="rail.css">
+<link rel="stylesheet" href="pages.css">
+<link rel="stylesheet" href="pages2.css">
+<link rel="stylesheet" href="responsive.css">
+</head>
+<body>
+  <!-- 顶部栏 -->
+  <header class="topbar">
+    <div class="brand">
+      <button class="menu-btn" data-act="sidebarToggle" aria-label="打开菜单" title="菜单">
+        <span class="menu-lines"><i></i><i></i><i></i></span>
+      </button>
+      <div class="brand-mark">茶</div>
+      <div class="brand-text" id="brandText">
+        <div class="brand-name-row">
+          <strong class="brand-name">茶歇工作台</strong>
+          <button class="brand-edit" data-act="editWorkspaceName" title="修改工作台名称" aria-label="修改工作台名称">
+            <span class="ico" data-icon="edit"></span>
+          </button>
+        </div>
+        <span class="brand-sub">TEA TIME STUDIO</span>
+      </div>
+    </div>
+
+    <div class="search-wrap">
+      <label class="search-box" id="searchBox">
+        <span class="search-ico" data-icon="search"></span>
+        <input id="globalSearch" type="text" placeholder="搜索文献、任务、支出记录…" autocomplete="off" aria-label="全局搜索">
+        <span class="search-kbd"><kbd>/</kbd></span>
+      </label>
+      <div class="search-panel" id="searchPanel" hidden></div>
+    </div>
+
+    <div class="tb-actions">
+      <button class="tb-btn rail-toggle" data-act="railToggle" title="展开侧栏" aria-label="展开侧栏">
+        <span data-icon="panel"></span>
+      </button>
+      <button class="tb-btn" data-act="notifications" id="notifBtn" title="通知" aria-label="通知">
+        <span data-icon="bell"></span>
+        <em class="badge" id="notifBadge" hidden>0</em>
+      </button>
+      <button class="tb-btn" data-act="themeQuick" id="themeQuick" title="切换深浅色" aria-label="切换深浅色">
+        <span data-icon="moon"></span>
+      </button>
+      <button class="tb-btn hide-sm" data-act="palette" id="paletteBtn" title="强调色微调" aria-label="强调色">
+        <span data-icon="palette"></span>
+        <em class="accent-dot" id="accentDot"></em>
+      </button>
+      <button class="tb-btn hide-sm" data-act="shortcuts" title="快捷键" aria-label="快捷键">
+        <span data-icon="keyboard"></span>
+      </button>
+      <button class="tb-btn" data-act="settings" title="设置" aria-label="设置">
+        <span data-icon="settings"></span>
+      </button>
+      <button class="avatar" data-act="profile" title="个人工作台">柚</button>
+    </div>
+
+    <!-- 通知面板 -->
+    <div class="pop-panel notif-panel" id="notifPanel" hidden>
+      <div class="pop-head">
+        <h3>通知</h3>
+        <button class="text-btn" data-act="readAll">全部已读</button>
+      </div>
+      <div class="pop-body" id="notifList"></div>
+    </div>
+
+    <!-- 强调色面板 -->
+    <div class="pop-panel accent-panel" id="accentPanel" hidden>
+      <div class="pop-head">
+        <h3>强调色微调</h3>
+        <span class="mini-note">低饱和 · 奶茶调</span>
+      </div>
+      <div class="accent-swatches" id="accentSwatches"></div>
+      <div class="mode-row">
+        <button class="mode-chip" data-mode="light"><span data-icon="sun"></span>浅色</button>
+        <button class="mode-chip" data-mode="dark"><span data-icon="moon"></span>深色</button>
+      </div>
+      <p class="pop-tip">主题偏好会自动保存在本地。</p>
+    </div>
+  </header>
+
+  <!-- 主体三栏 -->
+  <div class="app-grid">
+    <aside class="sidebar" id="sidebar">
+      <div class="side-scroll">
+        <div class="side-label">工作台</div>
+        <nav class="nav" id="nav"></nav>
+        <div class="side-label side-label-2">扩展位</div>
+        <div class="nav nav-ext">
+          <button class="nav-item nav-ghost" data-act="extend">
+            <span class="nav-ico" data-icon="plus"></span>
+            <span class="nav-name">添加模块</span>
+            <span class="nav-tag">即将推出</span>
+          </button>
+        </div>
+      </div>
+      <div class="side-foot" id="sideFoot"></div>
+    </aside>
+
+    <main class="main" id="main" tabindex="-1"></main>
+
+    <aside class="rail" id="rail"></aside>
+  </div>
+
+  <div class="drawer-mask" id="drawerMask" hidden></div>
+
+  <!-- 模态层 -->
+  <div class="modal-layer" id="modalLayer" hidden>
+    <div class="modal-backdrop" data-act="modalBackdrop"></div>
+    <div class="modal-slot" id="modalSlot" role="dialog" aria-modal="true"></div>
+  </div>
+
+  <div class="toast-wrap" id="toastWrap" aria-live="polite"></div>
+
+  <input type="file" id="jsonImport" accept=".json,application/json" hidden>
+  <input type="file" id="paperUpload" accept=".pdf,.doc,.docx,.md,.txt,.epub" multiple hidden>
+  <input type="file" id="expenseImport" accept=".csv,text/csv" hidden>
+
+  <script src="js/data.js"></script>
+  <script src="js/icons.js"></script>
+  <script src="js/charts.js"></script>
+  <script src="js/ui.js"></script>
+  <script src="js/ui-papers.js"></script>
+  <script src="js/ui-pomodoro.js"></script>
+  <script src="js/ui-money.js"></script>
+  <script src="js/ui-settings.js"></script>
+  <script src="js/ui-modals.js"></script>
+  <script src="js/app-core.js"></script>
+  <script src="js/cloud.js"></script>
+  <script src="js/app-actions.js"></script>
+  <script src="js/app-actions2.js"></script>
+  <script src="js/ui-drinks.js"></script>
+  <script src="js/app-boot.js"></script>
+</body>
+</html>
