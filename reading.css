@@ -497,6 +497,54 @@
 .rd-body.pdf-mode { padding: 0; overflow: hidden; }
 .rd-pdf { width: 100%; height: 100%; border: none; display: block; }
 
+/* PDF 阅读（pdf.js 画布渲染） */
+.rd-pdf-wrap {
+  height: 100%; overflow: auto; padding: 14px 12px 26px;
+  -webkit-overflow-scrolling: touch;
+  background: rgba(255, 255, 255, .45);
+}
+.pdf-canvas {
+  display: block; margin: 0 auto; max-width: 100%;
+  background: #fff; border-radius: 4px;
+  box-shadow: 0 8px 26px rgba(80, 55, 30, .18);
+}
+.rd-pdf-page-no {
+  text-align: center; font-size: 12px; letter-spacing: .06em;
+  color: var(--rd-text-2); padding: 12px 0 0;
+}
+.rd-pdf-loading {
+  height: 100%; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 12px;
+  color: var(--rd-text-2); font-size: 13px;
+}
+.rd-pdf-spin {
+  width: 26px; height: 26px; border-radius: 50%;
+  border: 2.5px solid rgba(201, 143, 78, .25); border-top-color: #c98f4e;
+  animation: rdSpin .8s linear infinite;
+}
+@keyframes rdSpin { to { transform: rotate(360deg); } }
+.rd-pdf-fail {
+  height: 100%; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 14px;
+  padding: 32px 24px; text-align: center;
+  color: var(--rd-text);
+}
+.rd-pdf-fail-ic {
+  width: 54px; height: 54px; display: grid; place-items: center;
+  border-radius: 16px; background: rgba(201, 143, 78, .14); color: #c98f4e;
+}
+.rd-pdf-fail p { margin: 0; font-size: 13.5px; line-height: 1.7; color: var(--rd-text-2); max-width: 300px; }
+.rd-pdf-fail-acts { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; }
+.rd-pdf-act {
+  padding: 9px 18px; border-radius: 999px; font-size: 13px; cursor: pointer;
+  border: 1px solid rgba(201, 143, 78, .4); background: rgba(255, 250, 243, .9);
+  color: #a4712f; text-decoration: none; transition: .18s;
+}
+.rd-pdf-act:hover { background: #c98f4e; color: #fff; border-color: #c98f4e; }
+.rd-btn.rd-zoom { font-size: 12px; font-weight: 700; letter-spacing: .02em; padding: 0 8px; }
+.reader-root.bg-night .pdf-canvas { filter: invert(.9) hue-rotate(180deg) brightness(.92); }
+.reader-root.bg-night .rd-pdf-wrap { background: rgba(0, 0, 0, .25); }
+
 .rd-text { padding: 28px var(--rd-mg) 60px; }
 .mode-scroll .rd-text { max-width: 760px; margin: 0 auto; }
 .mode-swipe .rd-text {
