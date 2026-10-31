@@ -169,6 +169,7 @@
     const el = e.target;
     const act = el.dataset ? el.dataset.act : '';
     if (act === 'selectPaper') { ACT.selectPaper(el); return; }
+    if (act === 'bkSelect') { ACT.bkSelect(el, e); return; }
     if (act === 'toggleSubtask') { ACT.toggleSubtask(el); return; }
     if (act === 'bulkMove') { ACT.bulkMove(el); return; }
     if (el.id === 'filterFolder') { WB.state.paperFilter.folder = el.value; AU.refresh(); return; }
@@ -199,6 +200,20 @@
       paperTimer = setTimeout(() => {
         AU.refresh();
         const ni = document.getElementById('paperSearch');
+        if (ni) { ni.focus(); ni.setSelectionRange(ni.value.length, ni.value.length); }
+      }, 260);
+      return;
+    }
+    if (el.id === 'bookSearch' || el.id === 'exSearch') {
+      const isBook = el.id === 'bookSearch';
+      const st = isBook
+        ? (WB.state.bookFilter || (WB.state.bookFilter = { q: '', status: 'all', category: 'all', rating: 'all', sort: 'shelf' }))
+        : (WB.state.exFilter || (WB.state.exFilter = { q: '', book: 'all', tag: 'all', time: 'all' }));
+      st.q = el.value;
+      clearTimeout(paperTimer);
+      paperTimer = setTimeout(() => {
+        AU.refresh();
+        const ni = document.getElementById(el.id);
         if (ni) { ni.focus(); ni.setSelectionRange(ni.value.length, ni.value.length); }
       }, 260);
       return;
@@ -272,6 +287,7 @@
     const layer = document.getElementById('modalLayer');
     if (layer && !layer.hidden) return;
     if (typing || (t && t.isContentEditable)) return;
+    if (document.body.classList.contains('reader-open')) return;
     if (!WB.db.settings.onboarded) return;
     if (/^[nN]$/.test(e.key)) { e.preventDefault(); ACT.newTask(); }
     else if (/^[pP]$/.test(e.key)) {
@@ -323,6 +339,12 @@
       fdrop.classList.add('drag-over');
       return;
     }
+    const sdrop = e.target.closest('[data-shelf-drop]');
+    if (sdrop && drag && drag.type === 'book') {
+      e.preventDefault();
+      try { e.dataTransfer.dropEffect = 'move'; } catch (err) { /* ignore */ }
+      return;
+    }
     const el = e.target.closest('[data-drag]');
     if (!drag || !el || el.dataset.drag !== drag.type) return;
     e.preventDefault();
@@ -362,6 +384,26 @@
       WB.save();
       AU.refresh();
       APP.toast(moved ? `已移动 ${moved} 篇文献到「${folder}」` : `文献已在「${folder}」中`, 'folder');
+      drag = null;
+      clearDragMarks();
+      return;
+    }
+    const sdrop = e.target.closest('[data-shelf-drop]');
+    if (sdrop && drag && drag.type === 'book') {
+      e.preventDefault();
+      const shelfN = Number(sdrop.dataset.shelfDrop) || 1;
+      const card = e.target.closest('[data-drag="book"]');
+      let beforeId = null;
+      if (card && (card.dataset.key || card.dataset.id) !== drag.key) {
+        const rect = card.getBoundingClientRect();
+        if (e.clientX <= rect.left + rect.width / 2) {
+          beforeId = card.dataset.key || card.dataset.id;
+        } else {
+          const nx = card.nextElementSibling;
+          beforeId = (nx && nx.dataset && nx.dataset.drag === 'book') ? (nx.dataset.key || nx.dataset.id) : null;
+        }
+      }
+      if (WB.readApi && WB.readApi.moveBook) WB.readApi.moveBook(drag.key, shelfN, beforeId);
       drag = null;
       clearDragMarks();
       return;
