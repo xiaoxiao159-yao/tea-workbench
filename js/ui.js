@@ -85,6 +85,7 @@
   const NAV = [
     { page: 'home', label: '首页仪表盘', icon: 'home' },
     { page: 'papers', label: '文献存储', icon: 'book' },
+    { page: 'reading', label: '阅读书房', icon: 'bookOpen' },
     { page: 'pomodoro', label: '番茄钟', icon: 'timer' },
     { page: 'expenses', label: '每日支出', icon: 'wallet' },
     { page: 'drinks', label: '饮品记录', icon: 'coffee' },
@@ -100,6 +101,7 @@
         <span class="nav-ico">${IC.icon(n.icon)}</span>
         <span class="nav-name">${n.label}</span>
         ${n.page === 'papers' ? `<span class="nav-tag">${WB.db.papers.filter((p) => p.status !== 'read').length}</span>` : ''}
+        ${n.page === 'reading' && (WB.db.books || []).filter((b) => b.status === 'reading').length ? `<span class="nav-tag">${WB.db.books.filter((b) => b.status === 'reading').length}</span>` : ''}
         ${n.page === 'expenses' && todayExpenses().length ? `<span class="nav-tag">${todayExpenses().length}</span>` : ''}
         ${n.page === 'drinks' && (WB.db.drinks || []).filter((d) => d.date === U.dateKey()).length ? `<span class="nav-tag">${WB.db.drinks.filter((d) => d.date === U.dateKey()).length}</span>` : ''}
       </button>`).join('');
@@ -620,12 +622,14 @@
     if (WB.state.page === 'settings') WB.UI.afterSettings && WB.UI.afterSettings();
     if (WB.state.page === 'expenses') WB.UI.afterExpenses && WB.UI.afterExpenses();
     if (WB.state.page === 'papers') WB.UI.afterPapers && WB.UI.afterPapers();
+    if (WB.state.page === 'reading') WB.UI.afterReading && WB.UI.afterReading();
   }
 
   function renderPage() {
     if (!WB.db.settings.onboarded) return WB.UI.onboardingHTML();
     switch (WB.state.page) {
       case 'papers': return WB.UI.papersHTML();
+      case 'reading': return WB.UI.readingHTML();
       case 'pomodoro': return WB.UI.pomodoroHTML();
       case 'expenses': return WB.UI.expensesHTML();
       case 'drinks': return WB.UI.drinksHTML();
