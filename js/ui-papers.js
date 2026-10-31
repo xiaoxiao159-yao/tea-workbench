@@ -19,6 +19,14 @@
     WB.db.papers.forEach((p) => (p.tags || []).forEach((t) => set.add(t)));
     return [...set].slice(0, 18);
   }
+  function folderStrip() {
+    const f = filters();
+    const count = (name) => WB.db.papers.filter((p) => p.folder === name).length;
+    return `<div class="folder-strip">
+      <button class="chip folder-drop ${f.folder === 'all' ? 'active' : ''}" data-act="filterFolder" data-folder="all">${IC.icon('grid')}<span>全部</span><b>${WB.db.papers.length}</b></button>
+      ${folders().map((name) => `<button class="chip folder-drop ${f.folder === name ? 'active' : ''}" data-folder-drop="${esc(name)}" data-act="filterFolder" data-folder="${esc(name)}" title="把文献拖到这里，即可移动到「${esc(name)}」">${IC.icon('folder')}<span>${esc(name)}</span><b>${count(name)}</b></button>`).join('')}
+    </div>`;
+  }
   function selectedSet() {
     if (!WB.state.paperSelection) WB.state.paperSelection = new Set();
     return WB.state.paperSelection;
@@ -62,7 +70,7 @@
       </div>
       <div class="pc-foot">
         ${statusBtn(p)}
-        <span class="pc-meta">${esc(p.venue || '未标注')} · ${p.year || '—'}</span>
+        <span class="pc-meta">${esc(p.folder || '待分类')} · ${esc(p.venue || '未标注')} · ${p.year || '—'}</span>
       </div>
     </article>`;
   }
@@ -145,6 +153,14 @@
         </div>
       </div>
 
+      <div class="folder-strip-wrap">
+        <div class="folder-strip-head">
+          <span>归档文件夹</span>
+          <span class="mini-label">拖拽文献卡片到文件夹即可归类，点击文件夹可筛选</span>
+        </div>
+        ${folderStrip()}
+      </div>
+
       <div class="dropzone" id="paperDropzone" data-act="pickFiles">
         <span class="dz-ico">${IC.icon('upload')}</span>
         <div class="dz-main">
@@ -159,6 +175,10 @@
 
       ${sel.size ? `<div class="paper-bulkbar">
         <span>已选择 <b>${sel.size}</b> 篇</span>
+        <select class="filter-select bulk-move-select" data-act="bulkMove" aria-label="移动到文件夹">
+          <option value="">移动到文件夹…</option>
+          ${folders().map((name) => `<option value="${esc(name)}">${esc(name)}</option>`).join('')}
+        </select>
         <button class="btn btn-sm btn-secondary" data-act="bulkStatus" data-status="read">${IC.icon('check')} 标记已读</button>
         <button class="btn btn-sm btn-secondary" data-act="bulkStatus" data-status="reading">标记在读</button>
         <button class="btn btn-sm btn-danger" data-act="bulkDelete">${IC.icon('trash')} 删除</button>
