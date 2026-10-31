@@ -146,6 +146,12 @@
       version: 1,
       papers: [],
       folders: ['计算机视觉', '自然语言处理', '多模态', '待分类'],
+      books: [],
+      bookExcerpts: [],
+      bookMarks: [],
+      readingSessions: [],
+      readerSettings: { mode: 'swipe', font: 'serif', fontSize: 17, lineHeight: 1.8, bg: 'paper', margin: 24 },
+      readingGoal: { monthly: 4, dailyMin: 30, remind: true },
       tasks: [],
       expenses: [],
       drinks: [],
@@ -385,6 +391,40 @@
 
     db.ui.paperOrder = db.papers.map((p) => p.id);
     db.ui.taskOrder = db.tasks.map((t) => t.id);
+
+    /* 示例书房 */
+    const book = (i, o) => ({
+      id: `b_${i}`, title: '', author: '', category: '文学', status: 'unread',
+      rating: 0, intro: '', review: '', coverTmpl: (i - 1) % 6, coverId: '',
+      fileId: '', format: '', progress: 0, shelf: 1, order: i,
+      totalChapters: 0, lastReadAt: '', createdAt: addDays(now, -i * 5).toISOString(), finishedAt: '', ...o
+    });
+    db.books = [
+      book(1, {
+        title: '人类简史', author: '尤瓦尔·赫拉利', category: '历史', status: 'reading', rating: 5,
+        intro: '从认知革命到科学革命，重新讲述智人如何登上食物链顶端，并思考我们将走向何方。',
+        progress: 0.62, shelf: 1, order: 1, lastReadAt: now.toISOString()
+      }),
+      book(2, { title: '小王子', author: '圣埃克苏佩里', category: '文学', status: 'read', rating: 5, intro: '写给大人的童话，关于爱、责任与驯养。', review: '真正重要的东西，用眼睛是看不见的。', progress: 1, shelf: 1, order: 2, finishedAt: addDays(now, -6).toISOString(), lastReadAt: addDays(now, -6).toISOString() }),
+      book(3, { title: '活着', author: '余华', category: '文学', status: 'read', rating: 4, intro: '福贵一生的苦难与坚韧，写尽普通人的生命力量。', progress: 1, shelf: 1, order: 3, finishedAt: addDays(now, -12).toISOString(), lastReadAt: addDays(now, -12).toISOString() }),
+      book(4, { title: '深度工作', author: '卡尔·纽波特', category: '成长', status: 'reading', rating: 4, intro: '在分心的时代，如何训练专注力，创造真正有价值的成果。', progress: 0.28, shelf: 2, order: 1, lastReadAt: addDays(now, -2).toISOString() }),
+      book(5, { title: '夜晚的潜水艇', author: '陈春成', category: '文学', status: 'unread', rating: 0, intro: '九个故事，在现实与幻境之间潜游。', shelf: 2, order: 2 }),
+      book(6, { title: '原则', author: '瑞·达利欧', category: '成长', status: 'unread', rating: 0, intro: '桥水创始人总结的生活与工作原则。', shelf: 2, order: 3 })
+    ];
+    db.bookExcerpts = [
+      { id: 'ex_1', bookId: 'b_2', text: '正是你为你的玫瑰花费的时间，才使你的玫瑰变得如此重要。', note: '关系需要投入与经营。', color: 'quote', page: '第 21 章', chapter: '', tags: ['金句'], pinned: true, source: 'manual', createdAt: addDays(now, -6).toISOString() },
+      { id: 'bex_2', bookId: 'b_1', text: '我们并没有驯化小麦，反而是小麦驯化了我们。', note: '农业革命的另一种视角，值得反思。', color: 'question', page: '第 5 章', chapter: '', tags: ['疑问', '重点'], pinned: false, source: 'manual', createdAt: addDays(now, -3).toISOString() },
+      { id: 'bex_3', bookId: 'b_4', text: '高质量工作产出 = 时间 × 专注度。', note: '', color: 'key', page: '第 1 章', chapter: '', tags: ['重点'], pinned: false, source: 'manual', createdAt: addDays(now, -2).toISOString() }
+    ];
+    db.readingSessions = [];
+    for (let i = 0; i < 10; i++) {
+      if (i % 3 === 2) continue;
+      db.readingSessions.push({
+        id: uid('rs'), bookId: i % 2 ? 'b_1' : 'b_4',
+        date: dateKey(addDays(now, -i)), minutes: 20 + (i * 7) % 35,
+        ts: addDays(now, -i).toISOString()
+      });
+    }
     return db;
   }
 
@@ -395,8 +435,10 @@
     out.settings = Object.assign(base.settings, d.settings || {});
     if (typeof out.settings.cloudAutoSync !== 'boolean') out.settings.cloudAutoSync = false;
     out.ui = Object.assign(base.ui, d.ui || {});
-    ['papers', 'tasks', 'expenses', 'focus', 'popups', 'templates', 'popupHistory', 'notifications']
+    ['papers', 'tasks', 'expenses', 'focus', 'popups', 'templates', 'popupHistory', 'notifications', 'books', 'bookExcerpts', 'bookMarks', 'readingSessions']
       .forEach((k) => { if (!Array.isArray(out[k])) out[k] = base[k]; });
+    out.readerSettings = Object.assign(base.readerSettings, d.readerSettings || {});
+    out.readingGoal = Object.assign(base.readingGoal, d.readingGoal || {});
     if (!Array.isArray(out.drinks)) out.drinks = [];
     if (!Array.isArray(out.drinkFields) || !out.drinkFields.length) out.drinkFields = defaultDrinkFields();
     if (!out.templates.length) out.templates = defaultTemplates();
