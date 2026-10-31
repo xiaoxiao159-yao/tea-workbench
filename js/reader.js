@@ -12,6 +12,7 @@
   const R = {
     book: null, chapters: [], chapter: 0, ratio: 0,
     pdfUrl: '', root: null, timer: null, totalSeconds: 0, lastTick: 0,
+    pdfBlob: null, pdfDoc: null, pdfPage: 1, pdfZoom: 1, pdfTotal: 0, pdfTask: null,
     pomo: null, sideTab: '', saveT: null, bound: false
   };
 
@@ -39,7 +40,18 @@
     book.lastReadAt = new Date().toISOString();
 
     if (book.format === 'pdf') {
-      R.pdfUrl = URL.createObjectURL(file);
+      const blob = normalizePdfBlob(file);
+      if (!blob) {
+        APP.toast('PDF 文件读取失败，请重新导入', 'alert', 'warn');
+        R.book = null;
+        return;
+      }
+      R.pdfBlob = blob;
+      R.pdfUrl = URL.createObjectURL(blob);
+      R.pdfPage = Math.max(1, Number(book.readPage) || 1);
+      R.pdfZoom = 1;
+      R.pdfDoc = null;
+      R.pdfTotal = 0;
       R.chapters = [];
     } else {
       let data = null;
@@ -80,7 +92,10 @@
         <div class="rd-title"><b>${esc(b.title)}</b><span id="rdChapterName">${isPdf ? 'PDF 阅读' : ''}</span></div>
         <div class="rd-tools">
           <button class="rd-btn" data-rd="pomo" id="rdPomoBtn" title="开始阅读番茄钟">${IC.icon('timer')}</button>
-          ${isPdf ? '' : `<button class="rd-btn" data-rd="bookmark" id="rdMarkBtn" title="添加书签">${IC.icon('bookmark')}</button>
+          ${isPdf
+            ? `<button class="rd-btn rd-zoom" data-rd="zoomOut" title="缩小">A−</button>
+               <button class="rd-btn rd-zoom" data-rd="zoomIn" title="放大">A＋</button>`
+            : `<button class="rd-btn" data-rd="bookmark" id="rdMarkBtn" title="添加书签">${IC.icon('bookmark')}</button>
           <button class="rd-btn" data-rd="side" title="目录 · 书签 · 搜索">${IC.icon('list')}</button>`}
           <button class="rd-btn" data-rd="set" title="阅读设置">${IC.icon('settings')}</button>
         </div>
@@ -91,9 +106,10 @@
       </div>
       <footer class="rd-foot">
         ${isPdf
-          ? `<span class="rd-pdf-tip">使用内建工具栏翻页缩放</span>
+          ? `<button class="rd-btn" data-rd="prev" title="上一页">${IC.icon('chevronL')}</button>
              <input id="rdProgress" type="range" min="0" max="1000" value="${Math.round((Number(b.progress) || 0) * 1000)}" aria-label="阅读进度">
-             <span class="rd-pct" id="rdPct">${Math.round((Number(b.progress) || 0) * 100)}%</span>`
+             <span class="rd-pct" id="rdPct">${Math.round((Number(b.progress) || 0) * 100)}%</span>
+             <button class="rd-btn" data-rd="next" title="下一页">${IC.icon('chevronR')}</button>`
           : `<button class="rd-btn" data-rd="prev" title="上一页">${IC.icon('chevronL')}</button>
              <input id="rdProgress" type="range" min="0" max="1000" value="0" aria-label="阅读进度">
              <span class="rd-pct" id="rdPct">0%</span>
@@ -160,7 +176,10 @@
       gotoChapter(ci, Math.min(0.98, pos / len));
     },
     hl: (el) => highlightSelection(el.dataset.color || 'key'),
-    noteSel: () => noteFromSelection()
+    noteSel: () => noteFromSelection(),
+    zoomIn: () => pdfZoom(0.15),
+    zoomOut: () => pdfZoom(-0.15),
+    embedPdf: () => embedPdf()
   };
 
   function onRootClick(e) {
@@ -248,11 +267,165 @@
     });
   }
 
+  /* ---------- PDF 阅读（pdf.js 渲染，兼容移动端） ---------- */
+  const PDFJS_VER = '3.11.174';
+  const PDFJS_BASE = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${PDFJS_VER}`;
+
+  function normalizePdfBlob(file) {
+    if (!file) return null;
+    let blob = file;
+    if (!(blob instanceof Blob)) {
+      if (blob instanceof ArrayBuffer || ArrayBuffer.isView(blob)) {
+        blob = new Blob([blob], { type: 'application/pdf' });
+      } else return null;
+    }
+    if (blob.type !== 'application/pdf') {
+      try { blob = new Blob([blob], { type: 'application/pdf' }); } catch (e) { return null; }
+    }
+    return blob;
+  }
+
+  let pdfLibLoading = null;
+  function loadPdfjs() {
+    if (window.pdfjsLib) {
+      if (window.pdfjsLib.GlobalWorkerOptions) {
+        window.pdfjsLib.GlobalWorkerOptions.workerSrc = `${PDFJS_BASE}/pdf.worker.min.js`;
+      }
+      return Promise.resolve(window.pdfjsLib);
+    }
+    if (pdfLibLoading) return pdfLibLoading;
+    pdfLibLoading = new Promise((resolve, reject) => {
+      const s = document.createElement('script');
+      s.src = `${PDFJS_BASE}/pdf.min.js`;
+      s.onload = () => {
+        if (!window.pdfjsLib) { reject(new Error('pdf.js 未就绪')); return; }
+        window.pdfjsLib.GlobalWorkerOptions.workerSrc = `${PDFJS_BASE}/pdf.worker.min.js`;
+        resolve(window.pdfjsLib);
+      };
+      s.onerror = () => reject(new Error('pdf.js 加载失败'));
+      document.head.appendChild(s);
+      setTimeout(() => reject(new Error('pdf.js 加载超时')), 15000);
+    });
+    pdfLibLoading.catch(() => { pdfLibLoading = null; });
+    return pdfLibLoading;
+  }
+
   function renderPdf() {
     const body = document.getElementById('rdBody');
     if (!body) return;
     body.className = 'rd-body pdf-mode';
+    body.innerHTML = `<div class="rd-pdf-wrap" id="rdPdfWrap">
+      <div class="rd-pdf-loading"><span class="rd-pdf-spin"></span><p>正在加载 PDF…</p></div>
+    </div>`;
+    openPdfDoc();
+  }
+
+  async function openPdfDoc() {
+    let lib = null;
+    try { lib = await loadPdfjs(); } catch (e) { lib = null; }
+    if (!R.book) return;
+    if (!lib) { renderPdfFallback('PDF 组件加载失败（可能网络不可用）'); return; }
+    try {
+      const data = await R.pdfBlob.arrayBuffer();
+      R.pdfDoc = await lib.getDocument({ data, isEvalSupported: false }).promise;
+    } catch (e) {
+      console.warn('[reader] PDF 解析失败', e);
+      renderPdfFallback('PDF 解析失败，文件可能损坏或已加密');
+      return;
+    }
+    R.pdfTotal = R.pdfDoc.numPages || 1;
+    if (R.pdfPage > R.pdfTotal) R.pdfPage = R.pdfTotal;
+    if (R.pdfPage < 1) R.pdfPage = 1;
+    const nameEl = document.getElementById('rdChapterName');
+    if (nameEl) nameEl.textContent = `PDF · 共 ${R.pdfTotal} 页`;
+    const pct = document.getElementById('rdPct');
+    if (pct) pct.textContent = `${Math.round((R.pdfPage / R.pdfTotal) * 100)}%`;
+    pdfRenderPage(R.pdfPage);
+  }
+
+  async function pdfRenderPage(n) {
+    const wrap = document.getElementById('rdPdfWrap');
+    if (!wrap || !R.pdfDoc || !R.book) return;
+    const total = R.pdfDoc.numPages || 1;
+    n = Math.max(1, Math.min(total, n));
+    R.pdfPage = n;
+    try {
+      const page = await R.pdfDoc.getPage(n);
+      const baseWidth = Math.max(240, (wrap.clientWidth || 360) - 24);
+      const scale = (baseWidth / page.getViewport({ scale: 1 }).width) * (R.pdfZoom || 1);
+      const vp = page.getViewport({ scale });
+      const dpr = Math.min(2, window.devicePixelRatio || 1);
+      const canvas = document.createElement('canvas');
+      canvas.className = 'pdf-canvas';
+      canvas.width = Math.floor(vp.width * dpr);
+      canvas.height = Math.floor(vp.height * dpr);
+      canvas.style.width = `${Math.floor(vp.width)}px`;
+      canvas.style.height = `${Math.floor(vp.height)}px`;
+      const ctx = canvas.getContext('2d');
+      if (R.pdfTask) { try { R.pdfTask.cancel(); } catch (e) { /* ignore */ } R.pdfTask = null; }
+      const task = page.render({ canvasContext: ctx, viewport: vp, transform: dpr !== 1 ? [dpr, 0, 0, dpr, 0, 0] : null });
+      R.pdfTask = task;
+      await task.promise;
+      if (R.pdfTask === task) R.pdfTask = null;
+      if (!R.book) return;
+      wrap.innerHTML = '';
+      wrap.appendChild(canvas);
+      const foot = document.createElement('div');
+      foot.className = 'rd-pdf-page-no';
+      foot.textContent = `${n} / ${total}`;
+      wrap.appendChild(foot);
+      wrap.scrollTop = 0;
+      syncPdfSlider();
+      saveProgress();
+    } catch (e) {
+      if (e && e.name === 'RenderingCancelledException') return;
+      console.warn('[reader] PDF 页渲染失败', e);
+    }
+  }
+
+  function syncPdfSlider() {
+    const total = R.pdfTotal || 1;
+    const slider = document.getElementById('rdProgress');
+    const pct = document.getElementById('rdPct');
+    const p = total > 1 ? (R.pdfPage - 1) / (total - 1) : 1;
+    if (slider && document.activeElement !== slider) slider.value = Math.round(p * 1000);
+    if (pct) pct.textContent = `${Math.round((R.pdfPage / total) * 100)}%`;
+  }
+
+  function pdfGo(n) {
+    if (!R.pdfDoc) return;
+    const total = R.pdfDoc.numPages || 1;
+    if (n < 1) { APP.toast('已经是第一页', 'book'); return; }
+    if (n > total) { APP.toast('已经是最后一页', 'book'); return; }
+    pdfRenderPage(n);
+  }
+
+  function pdfZoom(delta) {
+    if (!R.pdfDoc) return;
+    R.pdfZoom = Math.max(0.6, Math.min(3, Math.round((R.pdfZoom + delta) * 100) / 100));
+    pdfRenderPage(R.pdfPage);
+  }
+
+  function renderPdfFallback(msg) {
+    const body = document.getElementById('rdBody');
+    if (!body) return;
+    body.className = 'rd-body pdf-mode';
+    body.innerHTML = `<div class="rd-pdf-fail">
+      <div class="rd-pdf-fail-ic">${IC.icon('file')}</div>
+      <p>${esc(msg)}</p>
+      <div class="rd-pdf-fail-acts">
+        <a class="rd-pdf-act" href="${R.pdfUrl}" target="_blank" rel="noopener">在新窗口打开</a>
+        <button class="rd-pdf-act" data-rd="embedPdf">用内嵌查看器打开</button>
+      </div>
+    </div>`;
+  }
+
+  function embedPdf() {
+    const body = document.getElementById('rdBody');
+    if (!body || !R.pdfUrl) return;
+    body.className = 'rd-body pdf-mode';
     body.innerHTML = `<iframe src="${R.pdfUrl}#view=FitH" title="PDF 阅读" class="rd-pdf"></iframe>`;
+    APP.toast('已切换为浏览器内嵌查看器', 'file');
   }
 
   /* ---------- 翻页与进度 ---------- */
@@ -267,7 +440,8 @@
     return max > 2 ? Math.min(1, Math.max(0, body.scrollTop / max)) : 0;
   }
   function turn(dir) {
-    if (!R.book || R.book.format === 'pdf') return;
+    if (!R.book) return;
+    if (R.book.format === 'pdf') { pdfGo(R.pdfPage + dir); return; }
     const body = document.getElementById('rdBody');
     if (!body) return;
     const s = settings();
@@ -305,15 +479,12 @@
     if (!R.book) return;
     const v = (Number(e.target.value) || 0) / 1000;
     if (R.book.format === 'pdf') {
-      R.book.progress = v;
-      if (v >= 0.999 && R.book.status !== 'read') {
-        R.book.status = 'read';
-        R.book.finishedAt = U.dateKey();
-        APP.toast('已读完，自动标记为「已读」', 'check');
-      }
-      WB.save();
+      const total = (R.pdfDoc && R.pdfDoc.numPages) || 0;
+      if (!total) return;
+      const page = Math.max(1, Math.min(total, Math.round(v * (total - 1)) + 1));
       const pct = document.getElementById('rdPct');
-      if (pct) pct.textContent = `${Math.round(v * 100)}%`;
+      if (pct) pct.textContent = `${Math.round((page / total) * 100)}%`;
+      if (page !== R.pdfPage) pdfRenderPage(page);
       return;
     }
     const total = R.chapters.length || 1;
@@ -330,7 +501,17 @@
   function saveProgress() {
     const b = R.book;
     if (!b) return;
-    if (b.format !== 'pdf') {
+    if (b.format === 'pdf') {
+      const total = (R.pdfDoc && R.pdfDoc.numPages) || R.pdfTotal || 0;
+      b.readPage = R.pdfPage || 1;
+      b.progress = total > 1 ? Math.min(1, (R.pdfPage || 1) / total) : (total ? 1 : Number(b.progress) || 0);
+      if (b.progress >= 0.999 && b.status !== 'read') {
+        b.status = 'read';
+        b.finishedAt = U.dateKey();
+        APP.toast('已读完，自动标记为「已读」', 'check');
+        if (WB.actionUtil && WB.actionUtil.refresh) WB.actionUtil.refresh();
+      }
+    } else {
       b.readPos = { chapter: R.chapter, ratio: R.ratio };
       b.progress = Math.min(1, (R.chapter + R.ratio) / (R.chapters.length || 1));
       if (b.progress >= 0.999 && b.status !== 'read') {
@@ -646,10 +827,16 @@
       sx = t.clientX; sy = t.clientY; st = Date.now();
     }, { passive: true });
     body.addEventListener('touchend', (e) => {
-      if (!R.book || R.book.format === 'pdf') return;
+      if (!R.book) return;
       const t = e.changedTouches[0];
       const dx = t.clientX - sx, dy = t.clientY - sy, dt = Date.now() - st;
       if (dt > 600) return;
+      if (R.book.format === 'pdf') {
+        if (Math.abs(dx) > 70 && Math.abs(dx) > Math.abs(dy) * 1.5) {
+          pdfGo(R.pdfPage + (dx < 0 ? 1 : -1));
+        }
+        return;
+      }
       if (settings().mode === 'swipe' && Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy) * 1.4) {
         turn(dx < 0 ? 1 : -1);
       } else if (settings().mode === 'scroll' && dx > 70 && Math.abs(dy) < 40 && sx < 28) {
@@ -666,7 +853,10 @@
     if (R.pomo) stopPomo(false);
     clearInterval(R.timer);
     unbind();
+    if (R.pdfTask) { try { R.pdfTask.cancel(); } catch (e) { /* ignore */ } R.pdfTask = null; }
+    if (R.pdfDoc) { try { R.pdfDoc.destroy(); } catch (e) { /* ignore */ } R.pdfDoc = null; }
     if (R.pdfUrl) { try { URL.revokeObjectURL(R.pdfUrl); } catch (e) {} R.pdfUrl = ''; }
+    R.pdfBlob = null; R.pdfPage = 1; R.pdfZoom = 1; R.pdfTotal = 0;
     R.root.remove();
     R.root = null;
     R.book = null;
