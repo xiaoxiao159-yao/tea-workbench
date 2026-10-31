@@ -170,6 +170,7 @@
     const act = el.dataset ? el.dataset.act : '';
     if (act === 'selectPaper') { ACT.selectPaper(el); return; }
     if (act === 'toggleSubtask') { ACT.toggleSubtask(el); return; }
+    if (act === 'bulkMove') { ACT.bulkMove(el); return; }
     if (el.id === 'filterFolder') { WB.state.paperFilter.folder = el.value; AU.refresh(); return; }
     if (el.id === 'filterTag') { WB.state.paperFilter.tag = el.value; AU.refresh(); return; }
     if (el.id === 'expMonth') { WB.state.expMonth = el.value || WB.state.expMonth; AU.refresh(); return; }
@@ -313,6 +314,15 @@
       const hasFiles = e.dataTransfer && [...(e.dataTransfer.types || [])].includes('Files');
       if (hasFiles) { e.preventDefault(); dz.classList.add('over'); return; }
     }
+    const fdrop = e.target.closest('[data-folder-drop]');
+    if (fdrop) {
+      if (!drag || drag.type !== 'paper') return;
+      e.preventDefault();
+      try { e.dataTransfer.dropEffect = 'move'; } catch (err) { /* ignore */ }
+      document.querySelectorAll('.drag-over').forEach((x) => x.classList.remove('drag-over'));
+      fdrop.classList.add('drag-over');
+      return;
+    }
     const el = e.target.closest('[data-drag]');
     if (!drag || !el || el.dataset.drag !== drag.type) return;
     e.preventDefault();
@@ -323,6 +333,8 @@
   document.addEventListener('dragleave', (e) => {
     const dz = e.target.closest('#paperDropzone');
     if (dz) dz.classList.remove('over');
+    const fdrop = e.target.closest('[data-folder-drop]');
+    if (fdrop) fdrop.classList.remove('drag-over');
     const el = e.target.closest('[data-drag]');
     if (el) el.classList.remove('drag-over');
   });
@@ -332,6 +344,26 @@
       e.preventDefault();
       dz.classList.remove('over');
       handlePaperFiles(e.dataTransfer.files);
+      return;
+    }
+    const fdrop = e.target.closest('[data-folder-drop]');
+    if (fdrop && drag && drag.type === 'paper') {
+      e.preventDefault();
+      const folder = fdrop.dataset.folderDrop;
+      const set = WB.state.paperSelection;
+      const ids = (set && set.has(drag.key)) ? [...set] : [drag.key];
+      let moved = 0;
+      ids.forEach((id) => {
+        const p = WB.UI.paperById(id);
+        if (p && p.folder !== folder) { p.folder = folder; moved++; }
+      });
+      if (!Array.isArray(WB.db.folders)) WB.db.folders = ['待分类'];
+      if (!WB.db.folders.includes(folder)) WB.db.folders.push(folder);
+      WB.save();
+      AU.refresh();
+      APP.toast(moved ? `已移动 ${moved} 篇文献到「${folder}」` : `文献已在「${folder}」中`, 'folder');
+      drag = null;
+      clearDragMarks();
       return;
     }
     const el = e.target.closest('[data-drag]');
