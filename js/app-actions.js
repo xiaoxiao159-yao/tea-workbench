@@ -287,6 +287,21 @@
   ACT.paperView = (el) => { WB.state.paperView = el.dataset.view || 'grid'; refresh(); };
   ACT.filterStatus = (el) => { WB.state.paperFilter.status = el.dataset.status || 'all'; refresh(); };
   ACT.filterTag = (el) => { WB.state.paperFilter.tag = el.dataset.tag || 'all'; refresh(); };
+  ACT.filterFolder = (el) => { WB.state.paperFilter.folder = el.dataset.folder || 'all'; refresh(); };
+  ACT.bulkMove = (el) => {
+    const folder = (el.value || '').trim();
+    if (!folder) return;
+    if (!Array.isArray(WB.db.folders)) WB.db.folders = ['待分类'];
+    if (!WB.db.folders.includes(folder)) WB.db.folders.push(folder);
+    let n = 0;
+    WB.state.paperSelection.forEach((id) => {
+      const p = WB.UI.paperById(id);
+      if (p) { p.folder = folder; n++; }
+    });
+    WB.save();
+    refresh();
+    APP.toast(`已移动 ${n} 篇文献到「${folder}」`, 'folder');
+  };
   ACT.clearPaperFilters = () => {
     WB.state.paperFilter = { q: '', folder: 'all', tag: 'all', status: 'all' };
     refresh();
