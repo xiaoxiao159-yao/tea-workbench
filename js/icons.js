@@ -70,7 +70,19 @@
     gridList: P('<rect x="4" y="4" width="16" height="6" rx="1.5"/><rect x="4" y="14" width="16" height="6" rx="1.5"/>'),
     star: P('<path d="m12 3.8 2.5 5.1 5.6.8-4 4 1 5.6-5.1-2.7-5.1 2.7 1-5.6-4-4 5.6-.8z"/>'),
     cloud: P('<path d="M7.5 18.5h8.5a3.8 3.8 0 0 0 .2-7.6 5 5 0 0 0-9.6-1.3A3.5 3.5 0 0 0 7.5 18.5z"/>'),
-    rocket: P('<path d="M5 15c-1.5 1.5-2 5-2 5s3.5-.5 5-2c.7-.7.7-1.8 0-2.5s-1.8-.7-2.5 0z"/><path d="M12 15 9 12c2-6 6-8 11-9-1 5-3 9-9 11z"/><path d="M14 8a1.5 1.5 0 1 0 0-.1"/>')
+    rocket: P('<path d="M5 15c-1.5 1.5-2 5-2 5s3.5-.5 5-2c.7-.7.7-1.8 0-2.5s-1.8-.7-2.5 0z"/><path d="M12 15 9 12c2-6 6-8 11-9-1 5-3 9-9 11z"/><path d="M14 8a1.5 1.5 0 1 0 0-.1"/>'),
+    chevronLeft: P('<path d="m15 6-6 6 6 6"/>'),
+    bookmark: P('<path d="M7 3.5h10V20l-5-3.8L7 20z"/>'),
+    bookmarkFill: P('<path d="M7 3.5h10V20l-5-3.8L7 20z" fill="currentColor"/>'),
+    heart: P('<path d="M12 20s-7.2-4.6-8.6-9A4.8 4.8 0 0 1 12 6.6 4.8 4.8 0 0 1 20.6 11c-1.4 4.4-8.6 9-8.6 9z"/>'),
+    share: P('<circle cx="6" cy="12" r="2.4"/><circle cx="17.5" cy="5.5" r="2.4"/><circle cx="17.5" cy="18.5" r="2.4"/><path d="m8.2 10.8 7-4M8.2 13.2l7 4"/>'),
+    image: P('<rect x="3.5" y="4.5" width="17" height="15" rx="2"/><circle cx="9" cy="10" r="1.6"/><path d="m5 18 5.2-5.2 3.2 3.2 3.2-3.2L21 17"/>'),
+    copy: P('<rect x="9" y="8.5" width="11" height="12" rx="1.8"/><path d="M5.5 15.5h-1a1.5 1.5 0 0 1-1.5-1.5V5A1.5 1.5 0 0 1 4.5 3.5h9A1.5 1.5 0 0 1 15 5v1"/>'),
+    grip: P('<circle cx="9" cy="6" r="1.1" fill="currentColor"/><circle cx="15" cy="6" r="1.1" fill="currentColor"/><circle cx="9" cy="12" r="1.1" fill="currentColor"/><circle cx="15" cy="12" r="1.1" fill="currentColor"/><circle cx="9" cy="18" r="1.1" fill="currentColor"/><circle cx="15" cy="18" r="1.1" fill="currentColor"/>'),
+    highlighter: P('<path d="m4 20 1.2-3.6L14.6 7a2 2 0 0 1 2.8 0l1.6 1.6a2 2 0 0 1 0 2.8L9.6 20.8z"/><path d="m13 9 4 4"/>'),
+    bookshelf: P('<path d="M4 4.5h16v15H4z"/><path d="M4 12h16"/><path d="M8 4.5V12M12 12v7.5M16 4.5V12"/>'),
+    swap: P('<path d="M7 4 3.5 7.5 7 11"/><path d="M3.5 7.5h13"/><path d="m17 13 3.5 3.5L17 20"/><path d="M20.5 16.5h-13"/>'),
+    bookStack: P('<path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20V3.5H6.5A2.5 2.5 0 0 0 4 6z"/><path d="M4 19.5A2.5 2.5 0 0 0 6.5 22H20v-5"/>')
   };
   function icon(name) {
     return ICONS[name] || ICONS.file;
