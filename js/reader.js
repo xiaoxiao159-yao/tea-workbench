@@ -113,7 +113,8 @@
           : `<button class="rd-btn" data-rd="prev" title="上一页">${IC.icon('chevronL')}</button>
              <input id="rdProgress" type="range" min="0" max="1000" value="0" aria-label="阅读进度">
              <span class="rd-pct" id="rdPct">0%</span>
-             <button class="rd-btn" data-rd="next" title="下一页">${IC.icon('chevronR')}</button>`}
+             <button class="rd-btn" data-rd="next" title="下一页">${IC.icon('chevronR')}</button>
+             <button class="rd-next-ch" data-rd="nextChapter" id="rdNextCh" title="跳到下一章">下一章${IC.icon('chevronR')}</button>`}
       </footer>
       <div class="rd-sel-tools" id="rdSelTools" hidden></div>
       <div class="rd-set-panel" id="rdSetPanel" hidden></div>
@@ -177,6 +178,7 @@
     },
     hl: (el) => highlightSelection(el.dataset.color || 'key'),
     noteSel: () => noteFromSelection(),
+    nextChapter: () => nextChapter(),
     zoomIn: () => pdfZoom(0.15),
     zoomOut: () => pdfZoom(-0.15),
     embedPdf: () => embedPdf()
@@ -243,7 +245,7 @@
     if (nameEl) nameEl.textContent = ch.title || '';
     body.scrollTop = 0; body.scrollLeft = 0;
     bindScrollProgress();
-    requestAnimationFrame(() => { applyMode(); anchorScroll(); updateProgressUI(); });
+    requestAnimationFrame(() => { applyMode(); anchorScroll(); updateProgressUI(); syncNextChapterBtn(); });
     if (R.sideTab) renderSide();
   }
 
@@ -465,6 +467,31 @@
     R.chapter = i; R.ratio = ratio;
     renderChapter();
     scheduleSave();
+  }
+
+  /* 下一章按钮：跳转 + 立即保存进度，末章置灰并提示 */
+  function isLastChapter() {
+    return !R.chapters.length || R.chapter >= R.chapters.length - 1;
+  }
+  function syncNextChapterBtn() {
+    const btn = document.getElementById('rdNextCh');
+    if (!btn || !R.book) return;
+    const last = isLastChapter();
+    btn.classList.toggle('is-last', last);
+    btn.setAttribute('aria-disabled', last ? 'true' : 'false');
+    btn.title = last ? '已是最后一章' : '跳到下一章';
+    btn.innerHTML = last ? '已是最后一章' : `下一章${IC.icon('chevronR')}`;
+  }
+  function nextChapter() {
+    if (!R.book || R.book.format === 'pdf') return;
+    if (isLastChapter()) {
+      syncNextChapterBtn();
+      APP.toast('已是最后一章', 'bookmark');
+      return;
+    }
+    gotoChapter(R.chapter + 1, 0);
+    saveProgress();
+    APP.toast(`已跳到「${(R.chapters[R.chapter] || {}).title || `第 ${R.chapter + 1} 章`}」`, 'chevronR');
   }
   function updateProgressUI() {
     if (!R.book || R.book.format === 'pdf') return;
