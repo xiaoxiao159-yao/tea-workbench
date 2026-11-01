@@ -318,10 +318,44 @@
     APP.toast('正在从云端拉取…', 'download');
     try {
       const res = await WB.cloud.pull();
+      let files = null;
+      try { files = await WB.cloud.pullFiles(); } catch (e) { console.warn('[cloud] pull files failed', e); }
       WB.UI.renderAll();
-      APP.toast(res.conflict ? '已拉取云端数据（本地有更新未上传，请注意）' : '已从云端拉取最新数据', 'check');
+      const fileMsg = files ? `，补齐 ${files.added} 个文件` : '';
+      APP.toast((res.conflict ? '已拉取云端数据（本地有更新未上传，请注意）' : '已从云端拉取最新数据') + fileMsg, 'check');
     } catch (e) {
       APP.toast('拉取失败：' + e.message, 'alert', 'error');
+    }
+  };
+
+  ACT.cloudPushFiles = async () => {
+    if (!WB.cloud.getToken()) { APP.toast('请先填写 GitHub Token', 'alert', 'warn'); return; }
+    APP.toast('正在上传文献与书籍文件…（大文件需要一点时间）', 'upload');
+    try {
+      const res = await WB.cloud.pushAllFiles();
+      WB.UI.renderAll();
+      let msg = `已上传 ${res.uploaded} / ${res.total} 个文件`;
+      if (res.skipped) msg += `，跳过 ${res.skipped} 个（超过上限或已丢失）`;
+      if (res.failed) msg += `，失败 ${res.failed} 个`;
+      APP.toast(msg, res.failed ? 'alert' : 'check', res.failed ? 'warn' : '');
+    } catch (e) {
+      APP.toast('文件上传失败：' + e.message, 'alert', 'error');
+    }
+  };
+
+  ACT.cloudPullFiles = async () => {
+    if (!WB.cloud.getToken()) { APP.toast('请先填写 GitHub Token', 'alert', 'warn'); return; }
+    if (!WB.cloud.getGistId()) { APP.toast('还没有 Gist ID，请先上传一次', 'alert', 'warn'); return; }
+    APP.toast('正在下载云端文件…', 'download');
+    try {
+      const res = await WB.cloud.pullFiles();
+      WB.UI.renderAll();
+      let msg = `已下载 ${res.added} 个文件`;
+      if (res.skipped) msg += `，本地已有 ${res.skipped} 个`;
+      if (res.failed) msg += `，失败 ${res.failed} 个`;
+      APP.toast(msg, res.failed ? 'alert' : 'check', res.failed ? 'warn' : '');
+    } catch (e) {
+      APP.toast('文件下载失败：' + e.message, 'alert', 'error');
     }
   };
 
