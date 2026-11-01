@@ -237,7 +237,7 @@
               <div class="preview-placeholder">
                 <div class="pp-file">${(p.fileType || 'PDF').toUpperCase().slice(0, 4)}</div>
                 <div><strong style="color:var(--text);font-size:12px">${p.fileName ? '正在读取本地文件…' : '仅存有文献条目信息'}</strong></div>
-                <p>${p.fileName ? '文件从本地 IndexedDB 读取，不会上传到云端。' : '示例条目没有附带文件。你可以下载或替换为本地文件后预览。'}</p>
+                <p>${p.fileName ? '文件保存在本地，开启云同步后会自动备份，换设备也能打开。' : '示例条目没有附带文件。你可以下载或替换为本地文件后预览。'}</p>
                 <button class="btn btn-secondary btn-sm" data-act="downloadPaper" data-id="${p.id}">${IC.icon('download')} 下载文件</button>
               </div>
             </div>
