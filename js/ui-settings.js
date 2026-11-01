@@ -204,6 +204,13 @@
               <div class="sr-main"><strong>保存后自动同步</strong><span>每次修改数据后自动上传到云端（防抖 1.5 秒）</span></div>
               <button class="toggle ${s.cloudAutoSync ? 'on' : ''}" data-act="toggleCloudAuto" aria-label="自动同步开关"></button>
             </div>
+            <div class="set-row">
+              <div class="sr-main"><strong>文献与书籍文件也上云</strong><span>PDF / EPUB / 封面在导入后自动上传（单个文件上限 ${WB.cloud.fileStatus().maxMB}MB），换设备打开同一网址即可照着看</span></div>
+            </div>
+            <div class="flex" style="gap:8px;flex-wrap:wrap;margin-top:4px">
+              <button class="btn btn-secondary btn-sm" data-act="cloudPushFiles">${IC.icon('upload')} 上传全部文件</button>
+              <button class="btn btn-secondary btn-sm" data-act="cloudPullFiles">${IC.icon('download')} 下载云端文件</button>
+            </div>
             <div class="flex" style="gap:8px;flex-wrap:wrap;margin-top:4px">
               <button class="btn btn-secondary btn-sm" data-act="cloudSaveConfig">${IC.icon('save')} 保存配置</button>
               <button class="btn btn-secondary btn-sm" data-act="cloudPush">${IC.icon('upload')} 上传到云端</button>
@@ -218,6 +225,8 @@
               <span class="mini-label">状态：${WB.cloud.isReady() ? '<b style="color:var(--good)">已连接</b>' : '<b style="color:var(--muted)">未连接</b>'}</span>
               <span class="mini-label">上次上传：${WB.cloud.fmtTime(WB.cloud.status().lastPush)}</span>
               <span class="mini-label">上次拉取：${WB.cloud.fmtTime(WB.cloud.status().lastPull)}</span>
+              <span class="mini-label">文件上传：${WB.cloud.fmtTime(WB.cloud.fileStatus().lastPush)}</span>
+              <span class="mini-label">文件下载：${WB.cloud.fmtTime(WB.cloud.fileStatus().lastPull)}</span>
             </div>
             <details class="cloud-help">
               <summary>如何获取 GitHub Token？（约 1 分钟）</summary>
