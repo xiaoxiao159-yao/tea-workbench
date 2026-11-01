@@ -894,4 +894,6 @@
   }
 
   WB.Reader = { open, close, isOpen: () => !!R.root };
+  // 供其他模块（文献预览）复用同一套 pdf.js 加载与数据归一化逻辑
+  WB.pdfjs = { load: loadPdfjs, normalize: normalizePdfBlob };
 })();
