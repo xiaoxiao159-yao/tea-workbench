@@ -79,8 +79,8 @@
 
   ACT.profile = () => APP.openModal(WB.UI.profileHTML());
   ACT.shortcuts = () => APP.openModal(WB.UI.shortcutsHTML());
-  ACT.closeModal = () => APP.closeModal();
-  ACT.modalBackdrop = () => APP.closeModal();
+  ACT.closeModal = () => { releasePaperPdf(); APP.closeModal(); };
+  ACT.modalBackdrop = () => { releasePaperPdf(); APP.closeModal(); };
   ACT.doConfirm = () => {
     const cb = APP.pendingConfirm;
     APP.pendingConfirm = null;
@@ -185,6 +185,7 @@
     const file = await WB.idb.getFile(id);
     const stage = document.getElementById('paperPreviewStage');
     if (!file || !stage) return;
+    releasePaperPdf();
     if (APP.previewUrl) { try { URL.revokeObjectURL(APP.previewUrl); } catch (e) {} }
     const url = URL.createObjectURL(file);
     APP.previewUrl = url;
@@ -193,7 +194,7 @@
     const isImg = ['png', 'jpg', 'jpeg', 'gif', 'webp'].includes(ext);
     const isText = ['txt', 'md'].includes(ext);
     if (isPdf) {
-      stage.innerHTML = `<iframe src="${url}#view=FitH" title="PDF 预览" style="width:100%;height:100%;min-height:420px;border:0;border-radius:10px;background:#fff"></iframe>`;
+      renderPaperPdf(stage, file, p, url);
     } else if (isImg) {
       stage.innerHTML = `<img src="${url}" alt="${esc(p.title)}" style="max-width:100%;max-height:100%;border-radius:10px;object-fit:contain">`;
     } else if (isText) {
@@ -209,6 +210,114 @@
       WBIcons.hydrate(stage);
     }
   }
+  function releasePaperPdf() {
+    if (!APP.paperPdfDoc) return;
+    try { APP.paperPdfDoc.destroy(); } catch (e) { /* ignore */ }
+    APP.paperPdfDoc = null;
+  }
+
+  function paperPdfFail(stage, p, url, msg) {
+    stage.innerHTML = `<div class="preview-placeholder">
+      <div class="pp-file">PDF</div>
+      <div><strong style="color:var(--text);font-size:12px">${esc(msg)}</strong></div>
+      <p>文件已保存，可直接下载用本地阅读器打开，或在新窗口中查看。</p>
+      <div class="flex" style="gap:8px;flex-wrap:wrap;justify-content:center">
+        <a class="btn btn-secondary btn-sm" href="${url}" target="_blank" rel="noopener">${IC.icon('external')} 新窗口打开</a>
+        <button class="btn btn-secondary btn-sm" data-act="downloadPaper" data-id="${p.id}">${IC.icon('download')} 下载文件</button>
+      </div>
+    </div>`;
+    WBIcons.hydrate(stage);
+  }
+
+  /* 文献 PDF：用 pdf.js 渲染到 canvas（浏览器内嵌查看器在移动端常常空白） */
+  async function renderPaperPdf(stage, file, p, url) {
+    stage.innerHTML = `<div class="paper-pdf">
+      <div class="pp-canvas-wrap" id="ppCanvasWrap"><div class="pp-loading"><p>正在渲染 PDF…</p></div></div>
+      <div class="pp-bar" id="ppBar" hidden></div>
+    </div>`;
+    let lib = null;
+    try { lib = await WB.pdfjs.load(); } catch (e) { lib = null; }
+    if (!document.getElementById('ppCanvasWrap')) return;
+    if (!lib) { paperPdfFail(stage, p, url, 'PDF 组件加载失败，请检查网络后重试'); return; }
+    const blob = WB.pdfjs.normalize(file);
+    if (!blob) { paperPdfFail(stage, p, url, '文件数据异常，无法解析'); return; }
+    let doc = null;
+    try {
+      const data = await blob.arrayBuffer();
+      doc = await lib.getDocument({ data, isEvalSupported: false }).promise;
+    } catch (e) {
+      console.warn('[paper] PDF 解析失败', e);
+      if (document.getElementById('ppCanvasWrap')) paperPdfFail(stage, p, url, 'PDF 解析失败，文件可能损坏或已加密');
+      return;
+    }
+    const wrap0 = document.getElementById('ppCanvasWrap');
+    if (!wrap0 || !stage.contains(wrap0)) { try { doc.destroy(); } catch (e) {} return; }
+    APP.paperPdfDoc = doc;
+    const total = doc.numPages || 1;
+    let page = Math.max(1, Math.min(total, p.readPage || 1));
+    let task = null;
+    const bar = document.getElementById('ppBar');
+
+    function syncBar() {
+      if (!bar || APP.paperPdfDoc !== doc) return;
+      bar.hidden = false;
+      bar.innerHTML = `
+        <button type="button" class="pp-btn" data-pp="prev" ${page <= 1 ? 'disabled' : ''}>${IC.icon('chevronLeft')}上一页</button>
+        <span class="pp-no">${page} / ${total}</span>
+        <button type="button" class="pp-btn" data-pp="next" ${page >= total ? 'disabled' : ''}>下一页${IC.icon('chevronRight')}</button>
+        <a class="pp-btn" href="${url}" target="_blank" rel="noopener">${IC.icon('external')}新窗口</a>`;
+      const nameEl = document.getElementById('paperStageName');
+      if (nameEl && p.fileName) nameEl.textContent = `${p.fileName} · 共 ${total} 页`;
+    }
+
+    async function draw(n) {
+      if (APP.paperPdfDoc !== doc) return;
+      const wrap = document.getElementById('ppCanvasWrap');
+      if (!wrap) return;
+      page = Math.max(1, Math.min(total, n));
+      try {
+        const pg = await doc.getPage(page);
+        if (APP.paperPdfDoc !== doc) return;
+        const base = Math.max(200, (wrap.clientWidth || 360) - 20);
+        const scale = base / pg.getViewport({ scale: 1 }).width;
+        const vp = pg.getViewport({ scale });
+        const dpr = Math.min(2, window.devicePixelRatio || 1);
+        const canvas = document.createElement('canvas');
+        canvas.width = Math.floor(vp.width * dpr);
+        canvas.height = Math.floor(vp.height * dpr);
+        canvas.style.width = `${Math.floor(vp.width)}px`;
+        canvas.style.height = `${Math.floor(vp.height)}px`;
+        if (task) { try { task.cancel(); } catch (e) { /* ignore */ } task = null; }
+        const t = pg.render({
+          canvasContext: canvas.getContext('2d'),
+          viewport: vp,
+          transform: dpr !== 1 ? [dpr, 0, 0, dpr, 0, 0] : null
+        });
+        task = t;
+        await t.promise;
+        if (task === t) task = null;
+        const w = document.getElementById('ppCanvasWrap');
+        if (APP.paperPdfDoc !== doc || !w) return;
+        w.innerHTML = '';
+        w.appendChild(canvas);
+        w.scrollTop = 0;
+        syncBar();
+      } catch (e) {
+        if (e && e.name === 'RenderingCancelledException') return;
+        console.warn('[paper] PDF 页渲染失败', e);
+      }
+    }
+
+    if (bar) {
+      bar.addEventListener('click', (e) => {
+        const btn = e.target.closest('[data-pp]');
+        if (!btn || btn.disabled) return;
+        draw(btn.dataset.pp === 'prev' ? page - 1 : page + 1);
+      });
+    }
+    draw(page);
+  }
+
   ACT.paperFullscreen = () => {
     const stage = document.querySelector('.preview-stage');
     if (!stage) return;
