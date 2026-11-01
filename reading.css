@@ -443,17 +443,18 @@
 .reader-root {
   position: fixed; inset: 0; z-index: 90;
   display: flex; flex-direction: column;
+  isolation: isolate;
   --rd-fs: 17px; --rd-lh: 1.8; --rd-mg: 24px;
   --rd-text: #4a3a2e; --rd-text-2: #8a7763; --rd-line: rgba(140, 110, 80, .2);
-  --rd-ui: rgba(255, 251, 244, .92);
+  --rd-bg: #f3e9d2; --rd-ui: #f7eeda;
+  background-color: var(--rd-bg);
 }
-.reader-root.bg-milk { background: #fbf5ec; }
-.reader-root.bg-paper { background: #f3e9d2; --rd-ui: rgba(250, 243, 228, .94); }
-.reader-root.bg-eye { background: #cce8cf; --rd-ui: rgba(240, 248, 238, .94); }
+.reader-root.bg-milk { --rd-bg: #fbf5ec; --rd-ui: #fffaf2; }
+.reader-root.bg-paper { --rd-bg: #f3e9d2; --rd-ui: #f7eeda; }
+.reader-root.bg-eye { --rd-bg: #cce8cf; --rd-ui: #d8ecd9; }
 .reader-root.bg-night {
-  background: #1c1713;
+  --rd-bg: #1c1713; --rd-ui: #241e18;
   --rd-text: #d8c9b8; --rd-text-2: #9a8b78; --rd-line: rgba(216, 201, 184, .16);
-  --rd-ui: rgba(40, 33, 27, .94);
 }
 .reader-root[data-font="serif"] .rd-body { font-family: "Noto Serif SC", "Songti SC", SimSun, serif; }
 .reader-root[data-font="sans"] .rd-body { font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif; }
@@ -464,7 +465,7 @@
   padding: 10px 16px;
   background: var(--rd-ui);
   border-bottom: 1px solid var(--rd-line);
-  backdrop-filter: blur(8px);
+  position: relative; z-index: 3;
   flex: none;
 }
 .rd-btn {
@@ -486,10 +487,11 @@
 .rd-title span { font-size: 11px; color: var(--rd-text-2); max-width: 46vw; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .rd-tools { display: flex; gap: 2px; }
 
-.rd-main { flex: 1; display: flex; min-height: 0; position: relative; }
+.rd-main { flex: 1; display: flex; min-height: 0; position: relative; z-index: 1; background: var(--rd-bg); }
 .rd-body {
   flex: 1; overflow: auto; min-width: 0;
   color: var(--rd-text);
+  background: var(--rd-bg);
   scroll-behavior: auto;
 }
 .rd-body.mode-scroll { overflow-x: hidden; }
@@ -501,7 +503,7 @@
 .rd-pdf-wrap {
   height: 100%; overflow: auto; padding: 14px 12px 26px;
   -webkit-overflow-scrolling: touch;
-  background: rgba(255, 255, 255, .45);
+  background: var(--rd-bg);
 }
 .pdf-canvas {
   display: block; margin: 0 auto; max-width: 100%;
@@ -543,9 +545,9 @@
 .rd-pdf-act:hover { background: #c98f4e; color: #fff; border-color: #c98f4e; }
 .rd-btn.rd-zoom { font-size: 12px; font-weight: 700; letter-spacing: .02em; padding: 0 8px; }
 .reader-root.bg-night .pdf-canvas { filter: invert(.9) hue-rotate(180deg) brightness(.92); }
-.reader-root.bg-night .rd-pdf-wrap { background: rgba(0, 0, 0, .25); }
+.reader-root.bg-night .rd-pdf-wrap { background: var(--rd-bg); }
 
-.rd-text { padding: 28px var(--rd-mg) 60px; }
+.rd-text { padding: 28px var(--rd-mg) 60px; background: var(--rd-bg); }
 .mode-scroll .rd-text { max-width: 760px; margin: 0 auto; }
 .mode-swipe .rd-text {
   column-width: calc(100vw - 2 * var(--rd-mg) - 40px);
@@ -577,12 +579,33 @@ mark.mk-quote { background: rgba(181, 126, 166, .32); color: inherit; border-rad
   padding: 8px 16px;
   background: var(--rd-ui);
   border-top: 1px solid var(--rd-line);
-  backdrop-filter: blur(8px);
+  position: relative; z-index: 3;
   flex: none;
 }
 .rd-pdf-tip { font-size: 12px; color: var(--rd-text-2); flex: none; }
 #rdProgress { flex: 1; accent-color: #c98f4e; height: 4px; }
 .rd-pct { flex: none; min-width: 44px; text-align: right; font-size: 13px; font-weight: 600; color: var(--rd-text-2); }
+
+/* 下一章按钮 */
+.rd-next-ch {
+  flex: none; display: inline-flex; align-items: center; gap: 3px;
+  padding: 7px 13px; border: none; border-radius: 999px;
+  background: #c98f4e; color: #fff; cursor: pointer;
+  font-size: 13px; font-weight: 600; letter-spacing: .02em;
+  white-space: nowrap;
+  box-shadow: 0 3px 10px rgba(160, 110, 60, .26);
+  transition: background .16s ease, transform .16s ease, box-shadow .16s ease;
+}
+.rd-next-ch svg { width: 14px; height: 14px; }
+.rd-next-ch:hover { background: #b87f3f; transform: translateY(-1px); }
+.rd-next-ch.is-last {
+  background: #dfd3c1; color: #a3947f; box-shadow: none; cursor: default;
+}
+.rd-next-ch.is-last:hover { background: #dfd3c1; transform: none; }
+.reader-root.bg-night .rd-next-ch { background: #c98f4e; color: #231a12; }
+.reader-root.bg-night .rd-next-ch:hover { background: #d99c5a; }
+.reader-root.bg-night .rd-next-ch.is-last { background: #3a3128; color: #7d705f; }
+.reader-root.bg-night .rd-next-ch.is-last:hover { background: #3a3128; }
 
 /* 侧栏 */
 .rd-side {
@@ -590,7 +613,7 @@ mark.mk-quote { background: rgba(181, 126, 166, .32); color: inherit; border-rad
   display: flex; flex-direction: column;
   background: var(--rd-ui);
   border-left: 1px solid var(--rd-line);
-  backdrop-filter: blur(8px);
+  position: relative; z-index: 8;
 }
 .rd-side-tabs { display: flex; border-bottom: 1px solid var(--rd-line); }
 .rd-side-tabs button {
@@ -683,7 +706,6 @@ mark.mk-quote { background: rgba(181, 126, 166, .32); color: inherit; border-rad
   background: var(--rd-ui);
   border: 1px solid var(--rd-line); border-radius: 14px;
   box-shadow: 0 10px 30px rgba(60, 40, 20, .22);
-  backdrop-filter: blur(10px);
   display: flex; flex-direction: column; gap: 12px;
 }
 .rd-set-group { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
@@ -758,6 +780,8 @@ mark.mk-quote { background: rgba(181, 126, 166, .32); color: inherit; border-rad
   .rd-btn span { display: none; }
   .rd-top { gap: 6px; padding: 8px 10px; }
   .rd-foot { gap: 8px; padding: 6px 10px; }
+  .rd-next-ch { padding: 6px 11px; font-size: 12px; }
+  .rd-next-ch svg { display: none; }
   .ex-grid { grid-template-columns: 1fr; max-height: none; }
   .rd-set-panel { right: 8px; left: 8px; width: auto; }
   .book-card { width: 92px; }
